@@ -1,0 +1,12 @@
+These two unlock packets are the same!
+These two change password packets are the same!
+After editing, these two change password packets are not the same.
+Lock packet 1 password is: 222
+Exception on accessing invalid password field of deserialized lock packet 2.
+Starting with 159 bytes of data
+Got a packet end at byte 51!
+It’s response packet 1!
+Got a packet end at byte 106!
+It’s response packet 2!
+Got a packet end at byte 159!
+It’s response packet 3!
