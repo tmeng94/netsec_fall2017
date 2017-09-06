@@ -1,5 +1,6 @@
 from playground.network.packet import PacketType
-from playground.network.packet.fieldtypes import UINT32, STRING
+from playground.network.packet.fieldtypes import UINT32, STRING, ListFieldType
+from playground.network.packet.fieldtypes.attributes import Optional
 
 class UnlockPacket(PacketType):
     DEFINITION_IDENTIFIER = "lab1b.tmeng4.UnlockPacket"
@@ -26,6 +27,14 @@ class ResponsePacket(PacketType):
     FIELDS = [
         ("code", UINT32),
         ("message", STRING)
+    ]
+
+# For test purpose only; not included in protocol
+class TestOptionalListPacket(PacketType):
+    DEFINITION_IDENTIFIER = "lab1b.tmeng4.TestOptionalListPacket"
+    DEFINITION_VERSION = "1.0"
+    FIELDS = [
+        ("testlist", ListFieldType(STRING, {Optional: True}))
     ]
 
 def basicUnitTest():
@@ -58,6 +67,12 @@ def basicUnitTest():
     except AttributeError:
         print("Exception on accessing invalid password field of deserialized lock packet 2.")
 
+    try:
+        responsePacket0 = ResponsePacket()
+        responsePacket0.code = -418
+    except Exception:
+        print("Exception on setting negative value to a UINT32 field of response packet.")
+
     responsePacket1 = ResponsePacket()
     responsePacket1.code = 200
     responsePacket1.message = "Success"
@@ -84,6 +99,20 @@ def basicUnitTest():
                 print("It’s response packet 2!")
             elif packet == responsePacket3:
                 print("It’s response packet 3!")
+
+    testOptionalListPacket1 = TestOptionalListPacket()
+    testOptionalListPacketBytes1 = testOptionalListPacket1.__serialize__()
+    print("Optional field can be left unset!")
+    testOptionalListPacket1.testlist = ["Hello Playground!"]
+    testOptionalListPacketBytes2 = testOptionalListPacket1.__serialize__()
+    testOptionalListPacket2 = PacketType.Deserialize(testOptionalListPacketBytes2)
+    if testOptionalListPacket1 == testOptionalListPacket2:
+        print("These two optional list packets are the same!")
+    else:
+        print(list(testOptionalListPacket1.testlist))
+        print(list(testOptionalListPacket2.testlist))
+        if list(testOptionalListPacket1.testlist) == list(testOptionalListPacket2.testlist):
+            print("Though cannot be compared at packet level, these two list fields are the same!")
 
 if __name__=="__main__":
     basicUnitTest()
