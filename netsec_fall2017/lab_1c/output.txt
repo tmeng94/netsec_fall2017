@@ -1,0 +1,49 @@
+Unit test started; Lock initialized as locked, password = 000
+(Server) New Connection
+
+(Client) Sending unlock packet #1 (1234, bad format)
+(Server) Unlocking with 1234 ... Wrong Password Format
+(Client) LTP 400 Bad Request, server message: Wrong Password Format
+
+(Client) Sending unlock packet #2 (001, wrong password)
+(Server) Unlocking with 001 ... Wrong Password
+(Client) LTP 401 Unauthorized, server message: Wrong Password
+
+(Client) Sending unlock packet #3 (000)
+(Server) Unlocking with 000 ... Success
+(Client) LTP 200 Success, server message: Success
+
+(Client) Sending unlock packet #4 (000, duplicate)
+(Server) Unlocking with 000 ... Already Unlocked
+(Client) LTP 403 Forbidden, server message: Already Unlocked
+
+(Client) Sending change password packet #1 (1234, bad format)
+(Server) Changing password to 1234 ... Wrong Password Format
+(Client) LTP 400 Bad Request, server message: Wrong Password Format
+
+(Client) Sending change password packet #2 (123)
+(Server) Changing password to 123 ... Success
+(Client) LTP 200 Success, server message: Success
+
+(Client) Sending lock packet #1
+(Server) Locking ... Success
+(Client) LTP 200 Success, server message: Success
+
+(Client) Sending lock packet #2
+(Server) Locking ... Already Locked
+(Client) LTP 403 Forbidden, server message: Already Locked
+
+(Client) Sending change password packet #3 (456, now locked)
+(Server) Changing password to 456 ... Locked
+(Client) LTP 403 Forbidden, server message: Locked
+
+(Client) Sending unlock packet #5 (000, wrong password)
+(Server) Unlocking with 000 ... Wrong Password
+(Client) LTP 401 Unauthorized, server message: Wrong Password
+
+(Client) Sending unlock packet #6 (123)
+(Server) Unlocking with 123 ... Success
+(Client) LTP 200 Success, server message: Success
+
+(Client) Sending unknown type packet
+(Client) LTP 405 Method Unavailable, server message: Unknown Packet Type
