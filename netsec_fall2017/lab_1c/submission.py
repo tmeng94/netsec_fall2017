@@ -84,7 +84,7 @@ class Lock():
         return m.digest()
 
     def __init__(self, password, locked):
-        self.salt = os.urandom(4)
+        self.salt = os.urandom(8)
         self.password_hashed = Lock.hash(password, self.salt)
         self.locked = locked
 
@@ -105,6 +105,7 @@ class Lock():
         elif self.locked == True:
             return Lock.ERROR_LOCKED
         else:
+            self.salt = os.urandom(8)
             self.password_hashed = Lock.hash(newPassword, self.salt)
             return Lock.SUCCESS
 
