@@ -121,67 +121,70 @@ class LockServerProtocol(asyncio.Protocol):
     def __init__(self, lock):
         self.transport = None
         self.lock = lock
+        self.deserializer = PacketType.Deserializer()
 
     def connection_made(self, transport):
         serverPrint('New Connection')
         self.transport = transport
 
     def data_received(self, data):
-        pkt = PacketType.Deserialize(data)
-        response = ResponsePacket()
-        if isinstance(pkt, UnlockPacket):
-            result = self.lock.unlock(pkt.password)
-            if result == Lock.SUCCESS:
-                response.code = 200
-                response.message = "Success"
-            elif result == Lock.ERROR_WRONG_PASSWORD:
-                response.code = 401
-                response.message = "Wrong Password"
-            elif result == Lock.ERROR_ALREADY_UNLOCKED:
-                response.code = 403
-                response.message = "Already Unlocked"
-            elif result == Lock.ERROR_WRONG_PASSWORD_FORMAT:
-                response.code = 400
-                response.message = "Wrong Password Format"
+        self.deserializer.update(data)
+        for pkt in self.deserializer.nextPackets():
+            response = ResponsePacket()
+            if isinstance(pkt, UnlockPacket):
+                result = self.lock.unlock(pkt.password)
+                if result == Lock.SUCCESS:
+                    response.code = 200
+                    response.message = "Success"
+                elif result == Lock.ERROR_WRONG_PASSWORD:
+                    response.code = 401
+                    response.message = "Wrong Password"
+                elif result == Lock.ERROR_ALREADY_UNLOCKED:
+                    response.code = 403
+                    response.message = "Already Unlocked"
+                elif result == Lock.ERROR_WRONG_PASSWORD_FORMAT:
+                    response.code = 400
+                    response.message = "Wrong Password Format"
+                else:
+                    response.code = 500
+                    response.message = "Unknown Error"
+                serverPrint("Unlocking with " + pkt.password +
+                            " ... " + response.message)
+            elif isinstance(pkt, ChangePasswordPacket):
+                result = self.lock.changePassword(pkt.password)
+                if result == Lock.SUCCESS:
+                    response.code = 200
+                    response.message = "Success"
+                elif result == Lock.ERROR_LOCKED:
+                    response.code = 403
+                    response.message = "Locked"
+                elif result == Lock.ERROR_WRONG_PASSWORD_FORMAT:
+                    response.code = 400
+                    response.message = "Wrong Password Format"
+                else:
+                    response.code = 500
+                    response.message = "Unknown Error"
+                serverPrint("Changing password to " +
+                            pkt.password + " ... " + response.message)
+            elif isinstance(pkt, LockPacket):
+                result = self.lock.lock()
+                if result == Lock.SUCCESS:
+                    response.code = 200
+                    response.message = "Success"
+                elif result == Lock.ERROR_LOCKED:
+                    response.code = 403
+                    response.message = "Already Locked"
+                else:
+                    response.code = 500
+                    response.message = "Unknown Error"
+                serverPrint("Locking ... " + response.message)
             else:
-                response.code = 500
-                response.message = "Unknown Error"
-            serverPrint("Unlocking with " + pkt.password +
-                        " ... " + response.message)
-        elif isinstance(pkt, ChangePasswordPacket):
-            result = self.lock.changePassword(pkt.password)
-            if result == Lock.SUCCESS:
-                response.code = 200
-                response.message = "Success"
-            elif result == Lock.ERROR_LOCKED:
-                response.code = 403
-                response.message = "Locked"
-            elif result == Lock.ERROR_WRONG_PASSWORD_FORMAT:
-                response.code = 400
-                response.message = "Wrong Password Format"
-            else:
-                response.code = 500
-                response.message = "Unknown Error"
-            serverPrint("Changing password to " +
-                        pkt.password + " ... " + response.message)
-        elif isinstance(pkt, LockPacket):
-            result = self.lock.lock()
-            if result == Lock.SUCCESS:
-                response.code = 200
-                response.message = "Success"
-            elif result == Lock.ERROR_LOCKED:
-                response.code = 403
-                response.message = "Already Locked"
-            else:
-                response.code = 500
-                response.message = "Unknown Error"
-            serverPrint("Locking ... " + response.message)
-        else:
-            response.code = 405
-            response.message = "Unknown Packet Type"
-        self.transport.write(response.__serialize__())
+                response.code = 405
+                response.message = "Unknown Packet Type"
+            self.transport.write(response.__serialize__())
 
     def connection_lost(self, exc):
+        serverPrint('The client closed the connection')
         self.transport = None
 
 
@@ -256,6 +259,9 @@ class LockClientProtocol(asyncio.Protocol):
         testOptionalListPacket = TestOptionalListPacket()
         testOptionalListPacket.testlist = ["Whatever"]
         transport.write(testOptionalListPacket.__serialize__())
+
+        # transport.close is not implemented for MockTransportToProtocol
+        # transport.close()
 
     def data_received(self, data):
         pkt = PacketType.Deserialize(data)
