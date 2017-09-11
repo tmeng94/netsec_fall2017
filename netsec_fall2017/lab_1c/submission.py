@@ -189,76 +189,17 @@ class LockServerProtocol(asyncio.Protocol):
 
 
 class LockClientProtocol(asyncio.Protocol):
+    def __init__(self, pktInfoSequence):
+        self.pktInfoSequence = pktInfoSequence
+
     def connection_made(self, transport):
-        # newline
-        print()
-        clientPrint("Sending unlock packet #1 (1234, bad format)")
-        unlockPacket1 = UnlockPacket()
-        unlockPacket1.password = "1234"
-        transport.write(unlockPacket1.__serialize__())
-
-        print()
-        clientPrint("Sending unlock packet #2 (001, wrong password)")
-        unlockPacket2 = UnlockPacket()
-        unlockPacket2.password = "001"
-        transport.write(unlockPacket2.__serialize__())
-
-        print()
-        clientPrint("Sending unlock packet #3 (000)")
-        unlockPacket3 = UnlockPacket()
-        unlockPacket3.password = "000"
-        transport.write(unlockPacket3.__serialize__())
-
-        print()
-        clientPrint("Sending unlock packet #4 (000, duplicate)")
-        unlockPacket4 = unlockPacket3
-        transport.write(unlockPacket4.__serialize__())
-
-        print()
-        clientPrint("Sending change password packet #1 (1234, bad format)")
-        changePasswordPacket1 = ChangePasswordPacket()
-        changePasswordPacket1.password = "1234"
-        transport.write(changePasswordPacket1.__serialize__())
-
-        print()
-        clientPrint("Sending change password packet #2 (123)")
-        changePasswordPacket2 = ChangePasswordPacket()
-        changePasswordPacket2.password = "123"
-        transport.write(changePasswordPacket2.__serialize__())
-
-        print()
-        clientPrint("Sending lock packet #1")
-        lockPacket1 = LockPacket()
-        transport.write(lockPacket1.__serialize__())
-
-        print()
-        clientPrint("Sending lock packet #2")
-        lockPacket2 = LockPacket()
-        transport.write(lockPacket1.__serialize__())
-
-        print()
-        clientPrint("Sending change password packet #3 (456, now locked)")
-        changePasswordPacket3 = ChangePasswordPacket()
-        changePasswordPacket3.password = "456"
-        transport.write(changePasswordPacket3.__serialize__())
-
-        print()
-        clientPrint("Sending unlock packet #5 (000, wrong password)")
-        unlockPacket5 = UnlockPacket()
-        unlockPacket5.password = "000"
-        transport.write(unlockPacket5.__serialize__())
-
-        print()
-        clientPrint("Sending unlock packet #6 (123)")
-        unlockPacket6 = UnlockPacket()
-        unlockPacket6.password = "123"
-        transport.write(unlockPacket6.__serialize__())
-
-        print()
-        clientPrint("Sending unknown type packet")
-        testOptionalListPacket = TestOptionalListPacket()
-        testOptionalListPacket.testlist = ["Whatever"]
-        transport.write(testOptionalListPacket.__serialize__())
+        for pktInfo in self.pktInfoSequence:
+            # newline
+            print()
+            # print text description
+            clientPrint(pktInfo[0])
+            # send packet
+            transport.write(pktInfo[1].__serialize__())
 
         # transport.close is not implemented for MockTransportToProtocol
         # transport.close()
@@ -274,11 +215,66 @@ class LockClientProtocol(asyncio.Protocol):
 
 
 def basicUnitTest():
+    # initialize packets
+    pktInfoSequence = []
+
+    unlockPacket1 = UnlockPacket()
+    unlockPacket1.password = "1234"
+    pktInfoSequence.append(
+        ("Sending unlock packet #1 (1234, bad format)", unlockPacket1))
+
+    unlockPacket2 = UnlockPacket()
+    unlockPacket2.password = "001"
+    pktInfoSequence.append(
+        ("Sending unlock packet #2 (001, wrong password)", unlockPacket2))
+
+    unlockPacket3 = UnlockPacket()
+    unlockPacket3.password = "000"
+    pktInfoSequence.append(("Sending unlock packet #3 (000)", unlockPacket3))
+
+    unlockPacket4 = unlockPacket3
+    pktInfoSequence.append(
+        ("Sending unlock packet #4 (000, duplicate)", unlockPacket4))
+
+    changePasswordPacket1 = ChangePasswordPacket()
+    changePasswordPacket1.password = "1234"
+    pktInfoSequence.append(
+        ("Sending change password packet #1 (1234, bad format)", changePasswordPacket1))
+
+    changePasswordPacket2 = ChangePasswordPacket()
+    changePasswordPacket2.password = "123"
+    pktInfoSequence.append(
+        ("Sending change password packet #2 (123)", changePasswordPacket2))
+
+    lockPacket1 = LockPacket()
+    pktInfoSequence.append(("Sending lock packet #1", lockPacket1))
+
+    lockPacket2 = LockPacket()
+    pktInfoSequence.append(("Sending lock packet #2", lockPacket2))
+
+    changePasswordPacket3 = ChangePasswordPacket()
+    changePasswordPacket3.password = "456"
+    pktInfoSequence.append(
+        ("Sending change password packet #3 (456, now locked)", changePasswordPacket3))
+
+    unlockPacket5 = UnlockPacket()
+    unlockPacket5.password = "000"
+    pktInfoSequence.append(
+        ("Sending unlock packet #5 (000, wrong password)", unlockPacket5))
+
+    unlockPacket6 = UnlockPacket()
+    unlockPacket6.password = "123"
+    pktInfoSequence.append(("Sending unlock packet #6 (123)", unlockPacket6))
+
+    testOptionalListPacket = TestOptionalListPacket()
+    testOptionalListPacket.testlist = ["Whatever"]
+    pktInfoSequence.append(("Sending unknown type packet", testOptionalListPacket))
+
     lock = Lock("000", True)
     print("Unit test started; Lock initialized as locked, password = 000")
     # Modified from lab1c PDF
     asyncio.set_event_loop(TestLoopEx())
-    client = LockClientProtocol()
+    client = LockClientProtocol(pktInfoSequence)
     server = LockServerProtocol(lock)
     transportToServer = MockTransportToProtocol(server)
     transportToClient = MockTransportToProtocol(client)
