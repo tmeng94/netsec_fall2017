@@ -201,8 +201,8 @@ class LockClientProtocol(asyncio.Protocol):
             # send packet
             transport.write(pktInfo[1].__serialize__())
 
-        # transport.close is not implemented for MockTransportToProtocol
-        # transport.close()
+        print()
+        transport.close()
 
     def data_received(self, data):
         pkt = PacketType.Deserialize(data)

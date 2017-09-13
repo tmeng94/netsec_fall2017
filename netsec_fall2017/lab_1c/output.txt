@@ -47,3 +47,6 @@ Unit test started; Lock initialized as locked, password = 000
 
 (Client) Sending unknown type packet
 (Client) LTP 405 Method Unavailable, server message: Unknown Packet Type
+
+(Server) The client closed the connection
+(Client) The server closed the connection
