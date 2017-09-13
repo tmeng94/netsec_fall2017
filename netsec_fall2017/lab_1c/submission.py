@@ -268,18 +268,20 @@ def basicUnitTest():
 
     testOptionalListPacket = TestOptionalListPacket()
     testOptionalListPacket.testlist = ["Whatever"]
-    pktInfoSequence.append(("Sending unknown type packet", testOptionalListPacket))
+    pktInfoSequence.append(
+        ("Sending unknown type packet", testOptionalListPacket))
 
     lock = Lock("000", True)
     print("Unit test started; Lock initialized as locked, password = 000")
     # Modified from lab1c PDF
     asyncio.set_event_loop(TestLoopEx())
-    client = LockClientProtocol(pktInfoSequence)
-    server = LockServerProtocol(lock)
-    transportToServer = MockTransportToProtocol(server)
-    transportToClient = MockTransportToProtocol(client)
-    server.connection_made(transportToClient)
-    client.connection_made(transportToServer)
+    clientProtocol = LockClientProtocol(pktInfoSequence)
+    serverProtocol = LockServerProtocol(lock)
+    cTransport, sTransport = MockTransportToProtocol.CreateTransportPair(
+        clientProtocol, serverProtocol)
+    # Initialize server first to obtain transport
+    serverProtocol.connection_made(sTransport)
+    clientProtocol.connection_made(cTransport)
 
 
 if __name__ == "__main__":
