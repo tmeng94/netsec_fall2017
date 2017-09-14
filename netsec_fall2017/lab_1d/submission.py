@@ -323,7 +323,6 @@ lock: set the lock to be locked.''')
         lock = Lock("000", True)
         print("Server mode; Lock initialized as locked, password = 000")
         loop = asyncio.get_event_loop()
-        loop.set_debug(enabled=True)
         # Each client connection will create a new protocol instance
         coro = playground.getConnector().create_playground_server(
             lambda: LockServerProtocol(lock), 32768)
@@ -367,7 +366,6 @@ lock: set the lock to be locked.''')
                 parser.print_help()
                 sys.exit(1)
             loop = asyncio.get_event_loop()
-            # loop.set_debug(enabled=True)
             future = asyncio.Future()
             coro = playground.getConnector().create_playground_connection(
                 lambda: LockClientProtocol(future), args.address, 32768, "default", 0, 3)
