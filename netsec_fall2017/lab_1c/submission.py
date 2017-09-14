@@ -8,7 +8,6 @@ import hashlib
 import os
 import argparse
 import sys
-import threading
 
 # Define lock transfer protocol codes
 LtpCode = {
@@ -222,11 +221,6 @@ class LockClientProtocol(asyncio.Protocol):
     def connection_lost(self, exc):
         clientPrint('The server closed the connection')
         self.transport = None
-        # close event loop
-        # if self.loop:
-        #     print(self.loop.is_running())
-        #     while self.loop.is_running():
-        #         self.loop.stop()
         if self.future:
             self.future.set_result(0)
 
@@ -312,7 +306,9 @@ unlock PASSWORD: unlock with the given password.
 changePassword NEW_PASSWORD: reset the lock's password (only when unlocked)
 lock: set the lock to be locked.''')
     if len(sys.argv) == 1:
-        parser.print_help()
+        basicUnitTest()
+        print()
+        print("Note: run with --help for more options")
         sys.exit(1)
     args = parser.parse_args()
     if args.option == "unittest":

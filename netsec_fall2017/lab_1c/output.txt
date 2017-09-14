@@ -50,3 +50,5 @@ Unit test started; Lock initialized as locked, password = 000
 
 (Server) The client closed the connection
 (Client) The server closed the connection
+
+Note: run with --help for more options
