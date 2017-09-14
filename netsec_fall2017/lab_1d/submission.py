@@ -8,6 +8,7 @@ import hashlib
 import os
 import argparse
 import sys
+import playground
 
 # Define lock transfer protocol codes
 LtpCode = {
@@ -300,7 +301,9 @@ def basicUnitTest():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description='Network Security Lab 1c Submission', formatter_class=argparse.RawTextHelpFormatter)
+        description='Network Security Lab 1d Submission', formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument('--address', default='20174.8.16.32', help='''client only:
+Playground address of lock server (default to 20174.8.16.32).''')
     parser.add_argument('option', metavar='option', choices=['server', 'client', 'unittest'],
                         help='application mode: {server, client, unittest}')
     parser.add_argument('request', nargs='*',
@@ -320,13 +323,16 @@ lock: set the lock to be locked.''')
         lock = Lock("000", True)
         print("Server mode; Lock initialized as locked, password = 000")
         loop = asyncio.get_event_loop()
+        loop.set_debug(enabled=True)
         # Each client connection will create a new protocol instance
-        coro = loop.create_server(
-            lambda: LockServerProtocol(lock), '127.0.0.1', 32768)
+        coro = playground.getConnector().create_playground_server(
+            lambda: LockServerProtocol(lock), 32768)
         server = loop.run_until_complete(coro)
 
         # Serve requests until Ctrl+C is pressed
-        print('Serving on {}'.format(server.sockets[0].getsockname()))
+        # print('Serving on {}'.format(server.sockets[0].getsockname()))
+        print('Serving on Playground route ' + server.sockets[0].gethostname()[
+              0] + ", port " + str(server.sockets[0].gethostname()[1]))
         try:
             loop.run_forever()
         except KeyboardInterrupt:
@@ -334,7 +340,7 @@ lock: set the lock to be locked.''')
 
         # Close the server
         server.close()
-        loop.run_until_complete(server.wait_closed())
+        # loop.run_until_complete(server.wait_closed())
         loop.close()
     elif args.option == "client":
         if args.request and len(args.request):
@@ -361,9 +367,10 @@ lock: set the lock to be locked.''')
                 parser.print_help()
                 sys.exit(1)
             loop = asyncio.get_event_loop()
+            # loop.set_debug(enabled=True)
             future = asyncio.Future()
-            coro = loop.create_connection(lambda: LockClientProtocol(future),
-                                          '127.0.0.1', 32768)
+            coro = playground.getConnector().create_playground_connection(
+                lambda: LockClientProtocol(future), args.address, 32768, "default", 0, 3)
             transport, protocol = loop.run_until_complete(coro)
             protocol.sendPackets(pktInfoSequence)
             # run until completion of request
