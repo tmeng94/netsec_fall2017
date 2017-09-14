@@ -196,6 +196,7 @@ class LockClientProtocol(asyncio.Protocol):
         self.transport = None
         self.responseCount = 0
         self.future = future
+        self.deserializer = PacketType.Deserializer()
 
     def connection_made(self, transport):
         self.transport = transport
@@ -208,11 +209,12 @@ class LockClientProtocol(asyncio.Protocol):
             self.transport.write(pktInfo[1].__serialize__())
 
     def data_received(self, data):
-        pkt = PacketType.Deserialize(data)
-        if isinstance(pkt, ResponsePacket):
-            clientPrint("LTP " + str(pkt.code) + " " +
-                        LtpCode[pkt.code] + ", server message: " + pkt.message)
-        self.responseCount += 1
+        self.deserializer.update(data)
+        for pkt in self.deserializer.nextPackets():
+            if isinstance(pkt, ResponsePacket):
+                clientPrint("LTP " + str(pkt.code) + " " +
+                            LtpCode[pkt.code] + ", server message: " + pkt.message)
+            self.responseCount += 1
         if self.responseCount == len(self.pktInfoSequence):
             # All request completed
             print()
