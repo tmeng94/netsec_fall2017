@@ -6,6 +6,9 @@ from playground.network.testing import MockTransportToStorageStream, MockTranspo
 import asyncio
 import hashlib
 import os
+import argparse
+import sys
+import threading
 
 # Define lock transfer protocol codes
 LtpCode = {
@@ -189,29 +192,43 @@ class LockServerProtocol(asyncio.Protocol):
 
 
 class LockClientProtocol(asyncio.Protocol):
-    def __init__(self, pktInfoSequence):
+    def __init__(self, pktInfoSequence, future=None):
         self.pktInfoSequence = pktInfoSequence
+        self.transport = None
+        self.responseCount = 0
+        self.future = future
 
     def connection_made(self, transport):
+        self.transport = transport
         for pktInfo in self.pktInfoSequence:
             # newline
             print()
             # print text description
             clientPrint(pktInfo[0])
             # send packet
-            transport.write(pktInfo[1].__serialize__())
-
-        print()
-        transport.close()
+            self.transport.write(pktInfo[1].__serialize__())
 
     def data_received(self, data):
         pkt = PacketType.Deserialize(data)
         if isinstance(pkt, ResponsePacket):
             clientPrint("LTP " + str(pkt.code) + " " +
                         LtpCode[pkt.code] + ", server message: " + pkt.message)
+        self.responseCount += 1
+        if self.responseCount == len(self.pktInfoSequence):
+            # All request completed
+            print()
+            self.transport.close()
 
     def connection_lost(self, exc):
         clientPrint('The server closed the connection')
+        self.transport = None
+        # close event loop
+        # if self.loop:
+        #     print(self.loop.is_running())
+        #     while self.loop.is_running():
+        #         self.loop.stop()
+        if self.future:
+            self.future.set_result(0)
 
 
 def basicUnitTest():
@@ -285,4 +302,73 @@ def basicUnitTest():
 
 
 if __name__ == "__main__":
-    basicUnitTest()
+    parser = argparse.ArgumentParser(
+        description='Network Security Lab 1c Submission', formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument('option', metavar='option', choices=['server', 'client', 'unittest'],
+                        help='application mode: {server, client, unittest}')
+    parser.add_argument('request', nargs='*',
+                        help='''client request:
+unlock PASSWORD: unlock with the given password.
+changePassword NEW_PASSWORD: reset the lock's password (only when unlocked)
+lock: set the lock to be locked.''')
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(1)
+    args = parser.parse_args()
+    if args.option == "unittest":
+        basicUnitTest()
+    elif args.option == "server":
+        lock = Lock("000", True)
+        print("Server mode; Lock initialized as locked, password = 000")
+        loop = asyncio.get_event_loop()
+        # Each client connection will create a new protocol instance
+        coro = loop.create_server(
+            lambda: LockServerProtocol(lock), '127.0.0.1', 32768)
+        server = loop.run_until_complete(coro)
+
+        # Serve requests until Ctrl+C is pressed
+        print('Serving on {}'.format(server.sockets[0].getsockname()))
+        try:
+            loop.run_forever()
+        except KeyboardInterrupt:
+            pass
+
+        # Close the server
+        server.close()
+        loop.run_until_complete(server.wait_closed())
+        loop.close()
+    elif args.option == "client":
+        if args.request and len(args.request):
+            pktInfoSequence = []
+            if args.request[0] == "unlock":
+                if len(args.request) >= 2:
+                    clientPrint("Client mode, request = unlock")
+                    unlockPacket = UnlockPacket()
+                    unlockPacket.password = args.request[1]
+                    pktInfoSequence.append(
+                        ("Sending unlock packet, password = " + args.request[1], unlockPacket))
+            elif args.request[0] == "changePassword":
+                if len(args.request) >= 2:
+                    clientPrint("Client mode, request = change password")
+                    changePasswordPacket = ChangePasswordPacket()
+                    changePasswordPacket.password = args.request[1]
+                    pktInfoSequence.append(
+                        ("Sending change password packet, new password = " + args.request[1], changePasswordPacket))
+            elif args.request[0] == "lock":
+                clientPrint("Client mode, request = lock")
+                lockPacket = LockPacket()
+                pktInfoSequence.append(("Sending lock packet", lockPacket))
+            if not len(pktInfoSequence):
+                parser.print_help()
+                sys.exit(1)
+            loop = asyncio.get_event_loop()
+            future = asyncio.Future()
+            coro = loop.create_connection(lambda: LockClientProtocol(pktInfoSequence, future),
+                                          '127.0.0.1', 32768)
+            loop.run_until_complete(coro)
+            # run until completion of request
+            loop.run_until_complete(future)
+            loop.close()
+        else:
+            parser.print_help()
+            sys.exit(1)
